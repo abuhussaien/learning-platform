@@ -4,7 +4,20 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+def get_database_url():
+    """Get database URL from Streamlit secrets or environment variable"""
+    try:
+        import streamlit as st
+        if hasattr(st, 'secrets') and 'DATABASE_URL' in st.secrets:
+            return st.secrets["DATABASE_URL"]
+    except:
+        pass
+    return os.environ.get("DATABASE_URL")
+
+DATABASE_URL = get_database_url()
+
+if not DATABASE_URL:
+    raise Exception("DATABASE_URL is not configured. Please set it in Streamlit secrets or environment variables.")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
