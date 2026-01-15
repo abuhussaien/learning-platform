@@ -4,6 +4,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
+Base = declarative_base()
+_engine = None
+_SessionLocal = None
+
 def get_database_url():
     """Get database URL from Streamlit secrets or environment variable"""
     try:
@@ -14,14 +18,23 @@ def get_database_url():
         pass
     return os.environ.get("DATABASE_URL")
 
-DATABASE_URL = get_database_url()
+def get_engine():
+    global _engine
+    if _engine is None:
+        DATABASE_URL = get_database_url()
+        if not DATABASE_URL:
+            raise Exception("DATABASE_URL is not configured")
+        _engine = create_engine(DATABASE_URL)
+    return _engine
 
-if not DATABASE_URL:
-    raise Exception("DATABASE_URL is not configured. Please set it in Streamlit secrets or environment variables.")
+def get_session():
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return _SessionLocal
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+def SessionLocal():
+    return get_session()()
 
 class Student(Base):
     __tablename__ = "students"
@@ -71,7 +84,7 @@ class SelfAssessment(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=get_engine())
 
 def get_db():
     db = SessionLocal()
